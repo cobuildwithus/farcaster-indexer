@@ -38,16 +38,14 @@ const isProcessing: Record<string, boolean> = {
 };
 
 const isEnabled: Record<string, boolean> = {
-  casts: false,
-  profiles: false,
-  downloadProfiles: false,
-  'channel-members': false,
-  downloadNounishCitizens: false,
-  downloadGrants: false,
-  builderProfiles: false,
+  casts: true,
+  profiles: true,
+  downloadProfiles: true,
+  'channel-members': true,
+  downloadNounishCitizens: true,
+  downloadGrants: true,
+  builderProfiles: true,
 };
-
-testGrantUpdate().then(() => process.exit(0));
 
 const getSchedule = (key: keyof typeof schedules) => {
   return isDev ? schedules[key].dev : schedules[key].prod;
