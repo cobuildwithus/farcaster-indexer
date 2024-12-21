@@ -1,6 +1,7 @@
 import {
   BuilderProfileJobBody,
   EmbeddingType,
+  FarcasterAgentJobBody,
   IsGrantUpdateJobBody,
   JobBody,
   StoryJobBody,
@@ -98,4 +99,10 @@ export async function postBuilderProfileRequest(
 
 export async function postBulkStoryRequest(payloads: StoryJobBody[]) {
   await makeRequest('/bulk-add-story', { jobs: payloads });
+}
+
+export async function postBulkFarcasterAgentRequest(
+  payloads: FarcasterAgentJobBody[]
+) {
+  await makeRequest('/bulk-add-farcaster-agent', { jobs: payloads });
 }

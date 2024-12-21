@@ -8,23 +8,8 @@ import { NounishCitizen, Grant, StagingFarcasterCast } from '../types/types';
 import { checkGrantUpdates } from './is-grant-update';
 import { getFidToFname, getFidToVerifiedAddresses } from './download-csvs';
 import { getGrants } from './download-csvs';
-
-// Helper function to check if root parent URL is valid
-const isValidRootParentUrl = (rootParentUrl: string | null) => {
-  const validUrls = [
-    'https://warpcast.com/~/channel/vrbs',
-    'chain://eip155:1/erc721:0x9c8ff314c9bc7f6e59a9d9225fb22946427edc03',
-    'chain://eip155:1/erc721:0x558bfff0d583416f7c4e380625c7865821b8e95c',
-    'https://warpcast.com/~/channel/flows',
-  ];
-  return !!(rootParentUrl && validUrls.includes(rootParentUrl));
-};
-
-// Filter function for casts
-const filterCasts = (row: StagingFarcasterCast, nounishFids: Set<number>) => {
-  const fid = Number(row.fid);
-  return isValidRootParentUrl(row.root_parent_url) || nounishFids.has(fid);
-};
+import { queueAgentRequests } from './queue-agent-requests';
+import { filterCasts, filterCastsForAgent } from './filter-casts';
 
 // Function to process casts after migration
 export async function processCastsFromStagingTable(
@@ -101,6 +86,20 @@ export async function processCastsFromStagingTable(
         await checkGrantUpdates(filteredRowsWithGrantData, fidToFname);
         console.log(
           `Successfully checked grant updates for batch of ${filteredRowsWithGrantData.length} casts (offset: ${offset})`
+        );
+      }
+
+      const filteredRowsForAgent = rows.filter((row) =>
+        filterCastsForAgent(row)
+      );
+
+      if (filteredRowsForAgent.length > 0) {
+        console.log(
+          `Filtering for agent for batch of ${filteredRowsForAgent.length} casts (offset: ${offset})`
+        );
+        await queueAgentRequests(filteredRowsForAgent);
+        console.log(
+          `Successfully queued agent requests for batch of ${filteredRowsForAgent.length} casts (offset: ${offset})`
         );
       }
 

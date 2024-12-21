@@ -50,3 +50,10 @@ export interface StoryJobBody {
   newCastId: number;
   grantId: string;
 }
+
+export interface FarcasterAgentJobBody {
+  agentFid: number;
+  customInstructions: string;
+  replyToCastId: number | null;
+  postToChannelId: string | null;
+}
