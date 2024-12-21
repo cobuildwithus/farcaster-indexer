@@ -7,7 +7,8 @@ export async function queueAgentRequests(casts: StagingFarcasterCast[]) {
   const payloads: FarcasterAgentJobBody[] = [];
 
   for (const cast of casts) {
-    const mentionedFids = JSON.parse(cast.mentions);
+    console.log({ agentCast: cast });
+    const mentionedFids = cast.mentions || [];
     if (!mentionedFids.includes(DR_GONZO_FID)) {
       throw new Error(`Cast ${cast.id} does not mention DR Gonzo. Skipping.`);
     }

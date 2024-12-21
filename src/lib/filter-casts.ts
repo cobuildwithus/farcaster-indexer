@@ -22,6 +22,6 @@ export const filterCasts = (
 };
 
 export const filterCastsForAgent = (row: StagingFarcasterCast) => {
-  const mentionedFids = JSON.parse(row.mentions);
+  const mentionedFids = row.mentions || [];
   return mentionedFids.includes(DR_GONZO_FID);
 };
