@@ -7,9 +7,12 @@ import { parse } from 'csv-parse/sync';
 import { NounishCitizen, Grant, StagingFarcasterCast } from '../types/types';
 import { checkGrantUpdates } from './is-grant-update';
 import { getFidToFname, getFidToVerifiedAddresses } from './download-csvs';
-import { getGrants } from './download-csvs';
 import { queueAgentRequests } from './queue-agent-requests';
-import { filterCasts, filterCastsForAgent } from './filter-casts';
+import {
+  filterCastsForAgent,
+  filterCastsToEmbed,
+  getFilteredRowsWithGrantData,
+} from './filter-casts';
 
 // Function to process casts after migration
 export async function processCastsFromStagingTable(
@@ -44,7 +47,6 @@ export async function processCastsFromStagingTable(
         `SELECT c.*, p.fname as author_fname 
          FROM staging.farcaster_casts c
          LEFT JOIN production.farcaster_profile p ON c.fid = p.fid
-         WHERE c.parent_hash IS NULL
          ORDER BY c.id LIMIT $1 OFFSET $2`,
         [batchSize, offset]
       );
@@ -61,19 +63,21 @@ export async function processCastsFromStagingTable(
         `Processing batch of ${rows.length} casts (offset: ${offset})`
       );
 
-      const filteredRows = rows.filter((row) => filterCasts(row, nounishFids));
+      const embeddingRows = rows.filter((row) =>
+        filterCastsToEmbed(row, nounishFids)
+      );
 
-      if (filteredRows.length > 0) {
+      if (embeddingRows.length > 0) {
         console.log(
-          `Embedding batch of ${filteredRows.length} casts (offset: ${offset}, non-filtered: ${rows.length})`
+          `Embedding batch of ${embeddingRows.length} casts (offset: ${offset}, non-filtered: ${rows.length})`
         );
         await embedStagingCasts(
-          filteredRows,
+          embeddingRows,
           fidToFname,
           fidToVerifiedAddresses
         );
         console.log(
-          `Successfully embedded batch of ${filteredRows.length} casts (offset: ${offset}, non-filtered: ${rows.length})`
+          `Successfully embedded batch of ${embeddingRows.length} casts (offset: ${offset}, non-filtered: ${rows.length})`
         );
       }
 
@@ -97,6 +101,7 @@ export async function processCastsFromStagingTable(
         console.log(
           `Filtering for agent for batch of ${filteredRowsForAgent.length} casts (offset: ${offset})`
         );
+        console.log({ filteredRowsForAgent });
         await queueAgentRequests(filteredRowsForAgent);
         console.log(
           `Successfully queued agent requests for batch of ${filteredRowsForAgent.length} casts (offset: ${offset})`
@@ -106,56 +111,4 @@ export async function processCastsFromStagingTable(
       offset += batchSize;
     }
   }
-}
-
-function getFilteredRowsWithGrantData(
-  rows: StagingFarcasterCast[]
-): StagingFarcasterCast[] {
-  const grants = getGrants();
-  const profiles = getFidToVerifiedAddresses();
-
-  return rows
-    .map((row) => {
-      const result = filterGrantRecipients(row, profiles, grants);
-      if (!result.isValid) return null;
-      return row;
-    })
-    .filter((row): row is NonNullable<typeof row> => row !== null);
-}
-
-function filterGrantRecipients(
-  cast: StagingFarcasterCast,
-  profiles: Map<string, string[]>,
-  grants: Grant[]
-): { isValid: boolean } {
-  // Get profile for this cast's FID
-  const verifiedAddresses = profiles.get(cast.fid.toString());
-
-  if (!verifiedAddresses) {
-    console.error(`No profile found for FID ${cast.fid}`);
-  }
-
-  if (!verifiedAddresses || verifiedAddresses.length === 0) {
-    return { isValid: false };
-  }
-
-  // Handle case where verified_addresses is a string instead of array
-  const addresses = Array.isArray(verifiedAddresses)
-    ? verifiedAddresses
-    : [verifiedAddresses];
-
-  // Find all matching grants for this profile's addresses
-  const matchingGrants = grants.filter((grant) =>
-    addresses.some(
-      (address) => address.toLowerCase() === grant.recipient.toLowerCase()
-    )
-  );
-
-  if (matchingGrants.length === 0) {
-    return { isValid: false };
-  }
-
-  return {
-    isValid: true,
-  };
 }

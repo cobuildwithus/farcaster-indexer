@@ -60,7 +60,7 @@ export interface StagingFarcasterCast {
   updated_at: Date;
   deleted_at: Date | null;
   timestamp: Date;
-  fid: number;
+  fid: string;
   hash: Buffer;
   parent_hash: Buffer | null;
   parent_fid: number | null;
